@@ -50,16 +50,16 @@ namespace SmartLibrary.API.Controllers
         public async Task<ActionResult> BorrowBook(
             [FromBody] BorrowRecord borrowRecord)
         {
-            // Book exist වේද?
+            // is Book exist
             var book = await _context.Books.FindAsync(borrowRecord.BookId);
             if (book == null)
                 return NotFound("Book not found");
 
-            // Book available ද?
+            // is Book available
             if (!book.IsAvailable || book.AvailableCopies <= 0)
                 return BadRequest("Book is not available");
 
-            // Member exist වේද?
+            // is Member exist 
             var member = await _context.Members
                 .FindAsync(borrowRecord.MemberId);
             if (member == null)
@@ -70,7 +70,7 @@ namespace SmartLibrary.API.Controllers
             borrowRecord.DueDate = DateTime.Now.AddDays(14);
             borrowRecord.IsReturned = false;
 
-            // Book copies අඩු කිරීම
+            // reduce Book copies
             book.AvailableCopies--;
             if (book.AvailableCopies == 0)
                 book.IsAvailable = false;
@@ -93,7 +93,7 @@ namespace SmartLibrary.API.Controllers
             if (record.IsReturned)
                 return BadRequest("Book already returned");
 
-            // Book copies වැඩි කිරීම
+            // increase Book copies 
             var book = await _context.Books.FindAsync(record.BookId);
             if (book != null)
             {
@@ -101,7 +101,7 @@ namespace SmartLibrary.API.Controllers
                 book.IsAvailable = true;
             }
 
-            // Record update කිරීම
+            // Record update 
             record.ReturnDate = DateTime.Now;
             record.IsReturned = true;
 
