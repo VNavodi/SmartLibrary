@@ -1,4 +1,4 @@
-﻿@page "/books"
+@page "/books"
 @inject HttpClient Http
 
 <PageTitle>Books - SmartLibrary</PageTitle>
@@ -316,10 +316,13 @@
     {
         try
         {
+            HttpResponseMessage response;
             if (editingBook.Id == 0)
-                await Http.PostAsJsonAsync("api/books", editingBook);
+                response = await Http.PostAsJsonAsync("api/books", editingBook);
             else
-                await Http.PutAsJsonAsync($"api/books/{editingBook.Id}", editingBook);
+                response = await Http.PutAsJsonAsync($"api/books/{editingBook.Id}", editingBook);
+
+            response.EnsureSuccessStatusCode();
 
             showForm = false;
             ShowAlert(editingBook.Id == 0 ? "Book added successfully." : "Book updated successfully.", "alert-success");
@@ -337,7 +340,8 @@
         {
             try
             {
-                await Http.DeleteAsync($"api/books/{id}");
+                var response = await Http.DeleteAsync($"api/books/{id}");
+                response.EnsureSuccessStatusCode();
                 deleteConfirmId = null;
                 ShowAlert("Book deleted successfully.", "alert-success");
                 await LoadBooks();

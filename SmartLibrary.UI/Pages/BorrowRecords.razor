@@ -1,4 +1,4 @@
-﻿@page "/borrowrecords"
+@page "/borrowrecords"
 @inject HttpClient Http
 
 <PageTitle>Borrow Records - SmartLibrary</PageTitle>
@@ -376,7 +376,8 @@
         {
             try
             {
-                await Http.DeleteAsync($"api/borrowrecords/{id}");
+                var response = await Http.DeleteAsync($"api/borrowrecords/{id}");
+                response.EnsureSuccessStatusCode();
                 deleteConfirmId = null;
                 ShowAlert("Record deleted successfully.", "alert-success");
                 await LoadAllRecords();

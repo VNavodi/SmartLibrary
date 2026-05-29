@@ -1,4 +1,4 @@
-﻿@page "/categories"
+@page "/categories"
 @inject HttpClient Http
 
 <PageTitle>Categories - SmartLibrary</PageTitle>
@@ -217,11 +217,14 @@
     {
         try
         {
+            HttpResponseMessage response;
             if (editingCategory.Id == 0)
-                await Http.PostAsJsonAsync("api/categories", editingCategory);
+                response = await Http.PostAsJsonAsync("api/categories", editingCategory);
             else
-                await Http.PutAsJsonAsync(
+                response = await Http.PutAsJsonAsync(
                     $"api/categories/{editingCategory.Id}", editingCategory);
+
+            response.EnsureSuccessStatusCode();
 
             showForm = false;
             ShowAlert(editingCategory.Id == 0 ?
@@ -240,7 +243,8 @@
         {
             try
             {
-                await Http.DeleteAsync($"api/categories/{id}");
+                var response = await Http.DeleteAsync($"api/categories/{id}");
+                response.EnsureSuccessStatusCode();
                 deleteConfirmId = null;
                 ShowAlert("Category deleted successfully.", "alert-success");
                 await LoadCategories();

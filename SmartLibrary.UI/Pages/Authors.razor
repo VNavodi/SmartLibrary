@@ -1,4 +1,4 @@
-﻿@page "/authors"
+@page "/authors"
 @inject HttpClient Http
 
 <PageTitle>Authors - SmartLibrary</PageTitle>
@@ -223,11 +223,14 @@
     {
         try
         {
+            HttpResponseMessage response;
             if (editingAuthor.Id == 0)
-                await Http.PostAsJsonAsync("api/authors", editingAuthor);
+                response = await Http.PostAsJsonAsync("api/authors", editingAuthor);
             else
-                await Http.PutAsJsonAsync(
+                response = await Http.PutAsJsonAsync(
                     $"api/authors/{editingAuthor.Id}", editingAuthor);
+
+            response.EnsureSuccessStatusCode();
 
             showForm = false;
             ShowAlert(editingAuthor.Id == 0 ?
@@ -246,7 +249,8 @@
         {
             try
             {
-                await Http.DeleteAsync($"api/authors/{id}");
+                var response = await Http.DeleteAsync($"api/authors/{id}");
+                response.EnsureSuccessStatusCode();
                 deleteConfirmId = null;
                 ShowAlert("Author deleted successfully.", "alert-success");
                 await LoadAuthors();
