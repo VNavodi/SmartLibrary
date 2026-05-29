@@ -88,6 +88,7 @@ namespace SmartLibrary.API.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            book.Id = 0;
             _context.Books.Add(book);
             await _context.SaveChangesAsync();
 

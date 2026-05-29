@@ -22,16 +22,17 @@ builder.Services.AddSwaggerGen();
 
 // Add DbContext with In-Memory Database
 builder.Services.AddDbContext<LibraryContext>(options =>
-    options.UseInMemoryDatabase("SmartLibraryDB"));
+    options.UseSqlServer(builder.Configuration
+        .GetConnectionString("DefaultConnection")));
 
 var app = builder.Build();
 
 // Ensure database is created and seeded
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<LibraryContext>();
-    await db.Database.EnsureCreatedAsync();
-}
+//using (var scope = app.Services.CreateScope())
+//{
+//    var db = scope.ServiceProvider.GetRequiredService<LibraryContext>();
+//    await db.Database.EnsureCreatedAsync();
+//}
 
 // Configure HTTP pipeline
 if (app.Environment.IsDevelopment())
