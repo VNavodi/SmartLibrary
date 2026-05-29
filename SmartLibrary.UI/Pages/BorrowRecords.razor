@@ -1,0 +1,423 @@
+﻿@page "/borrowrecords"
+@inject HttpClient Http
+
+<PageTitle>Borrow Records - SmartLibrary</PageTitle>
+
+<div class="smartlibrary-app">
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a class="brand" href="/">SmartLibrary</a>
+            <div class="nav-links">
+                <a class="nav-link" href="/">Home</a>
+                <a class="nav-link" href="/books">Books</a>
+                <a class="nav-link" href="/authors">Authors</a>
+                <a class="nav-link" href="/categories">Categories</a>
+                <a class="nav-link" href="/members">Members</a>
+                <a class="nav-link active" href="/borrowrecords">Borrow Records</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO BANNER -->
+    <section class="borrow-hero">
+        <img src="https://public.readdy.ai/ai/img_res/827c51f2b231c78c82a8592bf7ddb4da.jpg"
+             alt="Library" class="borrow-hero-img" />
+        <div class="borrow-hero-overlay"></div>
+        <div class="borrow-hero-content">
+            <div>
+                <h2 class="borrow-hero-title">manage circulation</h2>
+            </div>
+            <div class="borrow-hero-bottom">
+                <button class="borrow-hero-btn" @onclick="ShowBorrowForm">
+                    <span>Borrow a Book</span>
+                    <span class="borrow-hero-btn-icon">→</span>
+                </button>
+                <p class="borrow-hero-desc">
+                    Track every loan, return, and overdue<br />
+                    to keep your collection moving.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- PAGE CONTENT -->
+    <div class="page-content">
+        <div class="content-wrapper">
+
+            <!-- Quick Action Cards -->
+            <div class="borrow-action-grid">
+                <button class="borrow-action-card" @onclick="ShowBorrowForm">
+                    <div class="borrow-action-icon">
+                        <i class="ri-exchange-line"></i>
+                    </div>
+                    <h3>Borrow Book</h3>
+                    <p>Check out a book to a member</p>
+                </button>
+                <button class="borrow-action-card" @onclick="LoadOverdueRecords">
+                    <div class="borrow-action-icon">
+                        <i class="ri-time-line"></i>
+                    </div>
+                    <h3>View Overdue</h3>
+                    <p>See all overdue borrow records</p>
+                </button>
+                <button class="borrow-action-card" @onclick="LoadAllRecords">
+                    <div class="borrow-action-icon">
+                        <i class="ri-list-check"></i>
+                    </div>
+                    <h3>View All</h3>
+                    <p>Browse complete borrow history</p>
+                </button>
+            </div>
+
+            <!-- Alert -->
+            @if (!string.IsNullOrEmpty(alertMessage))
+            {
+                <div class="alert @alertClass">
+                    @alertMessage
+                    <button class="alert-close" @onclick="() => alertMessage = string.Empty">×</button>
+                </div>
+            }
+
+            <!-- Borrow Form -->
+            @if (showBorrowForm)
+            {
+                <div class="form-card">
+                    <div class="form-header">
+                        <h3>Borrow a Book</h3>
+                        <button class="form-close" @onclick="CancelForm">×</button>
+                    </div>
+                    <div class="form-body">
+                        <div class="form-grid borrow-form-grid">
+                            <div class="form-group">
+                                <label>Member ID *</label>
+                                <input class="form-input" type="number"
+                                       placeholder="Enter Member ID"
+                                       @bind="newBorrow.MemberId" />
+                            </div>
+                            <div class="form-group">
+                                <label>Book ID *</label>
+                                <input class="form-input" type="number"
+                                       placeholder="Enter Book ID"
+                                       @bind="newBorrow.BookId" />
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="save-btn" @onclick="BorrowBook">
+                                Create Borrow Record
+                            </button>
+                            <button class="cancel-btn" @onclick="CancelForm">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Filter Tabs -->
+            <div class="filter-tabs">
+                <button class="filter-tab @(activeFilter == "all" ? "active" : "")"
+                        @onclick="LoadAllRecords">
+                    All Records
+                </button>
+                <button class="filter-tab @(activeFilter == "active" ? "active" : "")"
+                        @onclick="LoadActiveRecords">
+                    Active Loans
+                </button>
+                <button class="filter-tab @(activeFilter == "overdue" ? "active" : "")"
+                        @onclick="LoadOverdueRecords">
+                    Overdue
+                </button>
+            </div>
+
+            <!-- Table -->
+            <div class="table-card">
+                @if (records == null)
+                {
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                }
+                else if (!records.Any())
+                {
+                    <div class="empty-state">
+                        <i class="ri-file-list-line"></i>
+                        <p>No borrow records found.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>MEMBER</th>
+                                    <th>BOOK</th>
+                                    <th>BORROWED</th>
+                                    <th>DUE</th>
+                                    <th>RETURNED</th>
+                                    <th>STATUS</th>
+                                    <th>ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var record in records)
+                                {
+                                    <tr>
+                                        <td class="td-id">@record.Id</td>
+                                        <td>
+                                            <div>
+                                                <p class="td-title" style="font-size:12px;">Member @record.MemberId</p>
+                                                <p class="td-sub">ID: @record.MemberId</p>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <p class="td-title" style="font-size:12px;">Book @record.BookId</p>
+                                                <p class="td-sub">ID: @record.BookId</p>
+                                            </div>
+                                        </td>
+                                        <td class="td-author">@record.BorrowDate.ToString("yyyy-MM-dd")</td>
+                                        <td class="td-author">@record.DueDate.ToString("yyyy-MM-dd")</td>
+                                        <td class="td-author">
+                                            @(record.ReturnDate.HasValue ?
+                                                record.ReturnDate.Value.ToString("yyyy-MM-dd") : "-")
+                                        </td>
+                                        <td>
+                                            @if (record.IsReturned)
+                                            {
+                                                <span class="badge badge-available">Returned</span>
+                                            }
+                                            else if (record.DueDate < DateTime.Now)
+                                            {
+                                                <span class="badge badge-overdue">Overdue</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge badge-active">Active</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <div class="action-btns">
+                                                @if (!record.IsReturned)
+                                                {
+                                                    <button class="edit-btn"
+                                                            @onclick="() => ReturnBook(record.Id)">
+                                                        Return
+                                                    </button>
+                                                }
+                                                <button class="delete-btn @(deleteConfirmId == record.Id ? "confirm" : "")"
+                                                        @onclick="() => DeleteRecord(record.Id)">
+                                                    @(deleteConfirmId == record.Id ? "Confirm?" : "Delete")
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="footer-top">
+            <div class="footer-left">
+                <h2>Expand Your<br />Knowledge</h2>
+                <p>SmartLibrary empowers communities to discover, borrow, and manage books effortlessly.</p>
+            </div>
+            <div class="footer-right">
+                <div class="footer-column">
+                    <h3>RESOURCES</h3>
+                    <a href="/books">Books Catalog</a>
+                    <a href="/authors">Authors Index</a>
+                    <a href="/categories">Categories</a>
+                </div>
+                <div class="footer-column">
+                    <h3>MANAGEMENT</h3>
+                    <a href="/members">Members</a>
+                    <a href="/borrowrecords">Borrow Records</a>
+                    <a href="#">Dashboard</a>
+                </div>
+                <div class="footer-column">
+                    <h3>SUPPORT</h3>
+                    <a href="#">Help Center</a>
+                    <a href="#">Documentation</a>
+                    <a href="#">Contact Us</a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2026 SmartLibrary. All rights reserved.</p>
+            <div class="footer-links">
+                <span>Privacy Policy</span>
+                <span>Terms of Service</span>
+            </div>
+        </div>
+    </footer>
+
+</div>
+
+@code {
+    private List<BorrowRecord>? records;
+    private BorrowRequest newBorrow = new BorrowRequest();
+    private bool showBorrowForm = false;
+    private string alertMessage = "";
+    private string alertClass = "";
+    private string activeFilter = "all";
+    private int? deleteConfirmId = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAllRecords();
+    }
+
+    private async Task LoadAllRecords()
+    {
+        try
+        {
+            activeFilter = "all";
+            records = await Http.GetFromJsonAsync<List<BorrowRecord>>("api/borrowrecords");
+            alertMessage = "";
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"Error loading records: {ex.Message}", "alert-error");
+        }
+    }
+
+    private async Task LoadOverdueRecords()
+    {
+        try
+        {
+            activeFilter = "overdue";
+            records = await Http.GetFromJsonAsync<List<BorrowRecord>>("api/borrowrecords/overdue");
+            alertMessage = "";
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"Error loading overdue: {ex.Message}", "alert-error");
+        }
+    }
+
+    private async Task LoadActiveRecords()
+    {
+        try
+        {
+            activeFilter = "active";
+            var all = await Http.GetFromJsonAsync<List<BorrowRecord>>("api/borrowrecords");
+            records = all?.Where(r => !r.IsReturned && r.DueDate >= DateTime.Now).ToList();
+            alertMessage = "";
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"Error: {ex.Message}", "alert-error");
+        }
+    }
+
+    private void ShowBorrowForm()
+    {
+        newBorrow = new BorrowRequest();
+        showBorrowForm = true;
+        alertMessage = "";
+    }
+
+    private async Task BorrowBook()
+    {
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/borrowrecords/borrow", newBorrow);
+            if (response.IsSuccessStatusCode)
+            {
+                ShowAlert("Book borrowed successfully! Due in 14 days.", "alert-success");
+                showBorrowForm = false;
+                await LoadAllRecords();
+            }
+            else
+            {
+                ShowAlert("Error: Book may not be available.", "alert-error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"Error: {ex.Message}", "alert-error");
+        }
+    }
+
+    private async Task ReturnBook(int id)
+    {
+        try
+        {
+            var response = await Http.PutAsJsonAsync(
+                $"api/borrowrecords/return/{id}", new { });
+            if (response.IsSuccessStatusCode)
+            {
+                ShowAlert("Book returned successfully!", "alert-success");
+                await LoadAllRecords();
+            }
+            else
+            {
+                ShowAlert("Error returning book.", "alert-error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"Error: {ex.Message}", "alert-error");
+        }
+    }
+
+    private async Task DeleteRecord(int id)
+    {
+        if (deleteConfirmId == id)
+        {
+            try
+            {
+                await Http.DeleteAsync($"api/borrowrecords/{id}");
+                deleteConfirmId = null;
+                ShowAlert("Record deleted successfully.", "alert-success");
+                await LoadAllRecords();
+            }
+            catch (Exception ex)
+            {
+                ShowAlert($"Error deleting: {ex.Message}", "alert-error");
+            }
+        }
+        else
+        {
+            deleteConfirmId = id;
+        }
+    }
+
+    private void CancelForm()
+    {
+        showBorrowForm = false;
+        alertMessage = "";
+    }
+
+    private void ShowAlert(string message, string cssClass)
+    {
+        alertMessage = message;
+        alertClass = cssClass;
+    }
+
+    public class BorrowRecord
+    {
+        public int Id { get; set; }
+        public int MemberId { get; set; }
+        public int BookId { get; set; }
+        public DateTime BorrowDate { get; set; }
+        public DateTime DueDate { get; set; }
+        public DateTime? ReturnDate { get; set; }
+        public bool IsReturned { get; set; }
+    }
+
+    public class BorrowRequest
+    {
+        public int MemberId { get; set; }
+        public int BookId { get; set; }
+    }
+}

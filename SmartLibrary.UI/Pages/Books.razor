@@ -1,0 +1,381 @@
+﻿@page "/books"
+@inject HttpClient Http
+
+<PageTitle>Books - SmartLibrary</PageTitle>
+
+<div class="smartlibrary-app">
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a class="brand" href="/">SmartLibrary</a>
+            <div class="nav-links">
+                <a class="nav-link" href="/">Home</a>
+                <a class="nav-link active" href="/books">Books</a>
+                <a class="nav-link" href="/authors">Authors</a>
+                <a class="nav-link" href="/categories">Categories</a>
+                <a class="nav-link" href="/members">Members</a>
+                <a class="nav-link" href="/borrowrecords">Borrow Records</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- PAGE CONTENT -->
+    <div class="page-content">
+        <div class="content-wrapper">
+
+            <!-- Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Books</h1>
+                    <p class="page-subtitle">Manage your library catalog</p>
+                </div>
+                <button class="add-btn" @onclick="ShowAddForm">
+                    + Add New Book
+                </button>
+            </div>
+
+            <!-- Alert -->
+            @if (!string.IsNullOrEmpty(alertMessage))
+            {
+                <div class="alert @alertClass">
+                    @alertMessage
+                    <button class="alert-close" @onclick="() => alertMessage = string.Empty">×</button>
+                </div>
+            }
+
+            <!-- Search & Filter -->
+            <div class="search-row">
+                <div class="search-box">
+                    <i class="ri-search-line search-icon"></i>
+                    <input type="text"
+                           class="search-input"
+                           placeholder="Search by title, ISBN, or author..."
+                           @bind="searchTitle"
+                           @bind:event="oninput"
+                           @onkeyup="SearchBooks" />
+                </div>
+                <select class="filter-select" @onchange="FilterByAvailability">
+                    <option value="">All Availability</option>
+                    <option value="true">Available</option>
+                    <option value="false">Not Available</option>
+                </select>
+            </div>
+
+            <!-- Add/Edit Form -->
+            @if (showForm)
+            {
+                <div class="form-card">
+                    <div class="form-header">
+                        <h3>@(editingBook.Id == 0 ? "Add New Book" : "Edit Book")</h3>
+                        <button class="form-close" @onclick="CancelForm">×</button>
+                    </div>
+                    <div class="form-body">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>ISBN *</label>
+                                <input class="form-input" @bind="editingBook.ISBN" />
+                            </div>
+                            <div class="form-group">
+                                <label>Title *</label>
+                                <input class="form-input" @bind="editingBook.Title" />
+                            </div>
+                            <div class="form-group">
+                                <label>Description</label>
+                                <input class="form-input" @bind="editingBook.Description" />
+                            </div>
+                            <div class="form-group">
+                                <label>Published Year</label>
+                                <input class="form-input" type="number" @bind="editingBook.PublishedYear" />
+                            </div>
+                            <div class="form-group">
+                                <label>Price</label>
+                                <input class="form-input" type="number" step="0.01" @bind="editingBook.Price" />
+                            </div>
+                            <div class="form-group">
+                                <label>Available Copies</label>
+                                <input class="form-input" type="number" @bind="editingBook.AvailableCopies" />
+                            </div>
+                            <div class="form-group">
+                                <label>Author ID</label>
+                                <input class="form-input" type="number" @bind="editingBook.AuthorId" />
+                            </div>
+                            <div class="form-group">
+                                <label>Category ID</label>
+                                <input class="form-input" type="number" @bind="editingBook.CategoryId" />
+                            </div>
+                            <div class="form-group check-group">
+                                <label class="check-label">
+                                    <input type="checkbox" @bind="editingBook.IsAvailable" />
+                                    Is Available
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="save-btn" @onclick="SaveBook">
+                                @(editingBook.Id == 0 ? "Save Book" : "Update Book")
+                            </button>
+                            <button class="cancel-btn" @onclick="CancelForm">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Table -->
+            <div class="table-card">
+                @if (books == null)
+                {
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                }
+                else if (!books.Any())
+                {
+                    <div class="empty-state">
+                        <i class="ri-book-line"></i>
+                        <p>No books found matching your criteria.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>ISBN</th>
+                                    <th>TITLE</th>
+                                    <th>AUTHOR</th>
+                                    <th>PRICE</th>
+                                    <th>COPIES</th>
+                                    <th>AVAILABLE</th>
+                                    <th>ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var book in books)
+                                {
+                                    <tr>
+                                        <td class="td-id">@book.Id</td>
+                                        <td class="td-isbn">@book.ISBN</td>
+                                        <td class="td-title">@book.Title</td>
+                                        <td class="td-author">Author @book.AuthorId</td>
+                                        <td class="td-price">$@book.Price.ToString("0.00")</td>
+                                        <td class="td-copies">@book.AvailableCopies</td>
+                                        <td>
+                                            @if (book.IsAvailable)
+                                            {
+                                                <span class="badge badge-available">Available</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge badge-unavailable">Not Available</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <div class="action-btns">
+                                                <button class="edit-btn" @onclick="() => EditBook(book)">Edit</button>
+                                                <button class="delete-btn @(deleteConfirmId == book.Id ? "confirm" : "")"
+                                                        @onclick="() => DeleteBook(book.Id)">
+                                                    @(deleteConfirmId == book.Id ? "Confirm?" : "Delete")
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="footer-top">
+            <div class="footer-left">
+                <h2>Expand Your<br />Knowledge</h2>
+                <p>SmartLibrary empowers communities to discover, borrow, and manage books effortlessly.</p>
+            </div>
+            <div class="footer-right">
+                <div class="footer-column">
+                    <h3>RESOURCES</h3>
+                    <a href="/books">Books Catalog</a>
+                    <a href="/authors">Authors Index</a>
+                    <a href="/categories">Categories</a>
+                </div>
+                <div class="footer-column">
+                    <h3>MANAGEMENT</h3>
+                    <a href="/members">Members</a>
+                    <a href="/borrowrecords">Borrow Records</a>
+                </div>
+                <div class="footer-column">
+                    <h3>SUPPORT</h3>
+                    <a href="#">Help Center</a>
+                    <a href="#">Documentation</a>
+                    <a href="#">Contact Us</a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2026 SmartLibrary. All rights reserved.</p>
+            <div class="footer-links">
+                <span>Privacy Policy</span>
+                <span>Terms of Service</span>
+            </div>
+        </div>
+    </footer>
+
+</div>
+
+@code {
+    private List<Book>? books;
+    private Book editingBook = new Book();
+    private bool showForm = false;
+    private string searchTitle = "";
+    private string alertMessage = "";
+    private string alertClass = "";
+    private int? deleteConfirmId = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBooks();
+    }
+
+    private async Task LoadBooks()
+    {
+        try
+        {
+            books = await Http.GetFromJsonAsync<List<Book>>("api/books");
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"Error loading books: {ex.Message}", "alert-error");
+        }
+    }
+
+    private async Task SearchBooks()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(searchTitle))
+                await LoadBooks();
+            else
+                books = await Http.GetFromJsonAsync<List<Book>>(
+                    $"api/books/search?title={searchTitle}");
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"Error: {ex.Message}", "alert-error");
+        }
+    }
+
+    private async Task FilterByAvailability(ChangeEventArgs e)
+    {
+        try
+        {
+            if (e.Value?.ToString() == "true")
+                books = await Http.GetFromJsonAsync<List<Book>>("api/books/available");
+            else
+                await LoadBooks();
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"Error: {ex.Message}", "alert-error");
+        }
+    }
+
+    private void ShowAddForm()
+    {
+        editingBook = new Book();
+        showForm = true;
+        alertMessage = "";
+    }
+
+    private void EditBook(Book book)
+    {
+        editingBook = new Book
+        {
+            Id = book.Id,
+            ISBN = book.ISBN,
+            Title = book.Title,
+            Description = book.Description,
+            PublishedYear = book.PublishedYear,
+            Price = book.Price,
+            AvailableCopies = book.AvailableCopies,
+            IsAvailable = book.IsAvailable,
+            AuthorId = book.AuthorId,
+            CategoryId = book.CategoryId
+        };
+        showForm = true;
+    }
+
+    private async Task SaveBook()
+    {
+        try
+        {
+            if (editingBook.Id == 0)
+                await Http.PostAsJsonAsync("api/books", editingBook);
+            else
+                await Http.PutAsJsonAsync($"api/books/{editingBook.Id}", editingBook);
+
+            showForm = false;
+            ShowAlert(editingBook.Id == 0 ? "Book added successfully." : "Book updated successfully.", "alert-success");
+            await LoadBooks();
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"Error saving: {ex.Message}", "alert-error");
+        }
+    }
+
+    private async Task DeleteBook(int id)
+    {
+        if (deleteConfirmId == id)
+        {
+            try
+            {
+                await Http.DeleteAsync($"api/books/{id}");
+                deleteConfirmId = null;
+                ShowAlert("Book deleted successfully.", "alert-success");
+                await LoadBooks();
+            }
+            catch (Exception ex)
+            {
+                ShowAlert($"Error deleting: {ex.Message}", "alert-error");
+            }
+        }
+        else
+        {
+            deleteConfirmId = id;
+        }
+    }
+
+    private void CancelForm()
+    {
+        showForm = false;
+        alertMessage = "";
+    }
+
+    private void ShowAlert(string message, string cssClass)
+    {
+        alertMessage = message;
+        alertClass = cssClass;
+    }
+
+    public class Book
+    {
+        public int Id { get; set; }
+        public string ISBN { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public int PublishedYear { get; set; }
+        public decimal Price { get; set; }
+        public int AvailableCopies { get; set; }
+        public bool IsAvailable { get; set; }
+        public int AuthorId { get; set; }
+        public int CategoryId { get; set; }
+    }
+}

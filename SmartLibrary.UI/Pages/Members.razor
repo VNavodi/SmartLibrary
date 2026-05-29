@@ -1,0 +1,382 @@
+﻿@page "/members"
+@inject HttpClient Http
+
+<PageTitle>Members - SmartLibrary</PageTitle>
+
+<div class="smartlibrary-app">
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a class="brand" href="/">SmartLibrary</a>
+            <div class="nav-links">
+                <a class="nav-link" href="/">Home</a>
+                <a class="nav-link" href="/books">Books</a>
+                <a class="nav-link" href="/authors">Authors</a>
+                <a class="nav-link" href="/categories">Categories</a>
+                <a class="nav-link active" href="/members">Members</a>
+                <a class="nav-link" href="/borrowrecords">Borrow Records</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- PAGE CONTENT -->
+    <div class="page-content">
+        <div class="content-wrapper">
+
+            <!-- Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Members</h1>
+                    <p class="page-subtitle">Manage library members</p>
+                </div>
+                <button class="add-btn" @onclick="ShowAddForm">
+                    + Add New Member
+                </button>
+            </div>
+
+            <!-- Alert -->
+            @if (!string.IsNullOrEmpty(alertMessage))
+            {
+                <div class="alert @alertClass">
+                    @alertMessage
+                    <button class="alert-close" @onclick="() => alertMessage = string.Empty">×</button>
+                </div>
+            }
+
+            <!-- Add/Edit Form -->
+            @if (showForm)
+            {
+                <div class="form-card">
+                    <div class="form-header">
+                        <h3>@(editingMember.Id == 0 ? "Add New Member" : "Edit Member")</h3>
+                        <button class="form-close" @onclick="CancelForm">×</button>
+                    </div>
+                    <div class="form-body">
+                        <div class="form-grid members-form-grid">
+                            <div class="form-group">
+                                <label>Name *</label>
+                                <input class="form-input" @bind="editingMember.Name" />
+                            </div>
+                            <div class="form-group">
+                                <label>Email *</label>
+                                <input class="form-input" type="email" @bind="editingMember.Email" />
+                            </div>
+                            <div class="form-group">
+                                <label>Phone</label>
+                                <input class="form-input" @bind="editingMember.Phone" />
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="save-btn" @onclick="SaveMember">
+                                @(editingMember.Id == 0 ? "Save Member" : "Update Member")
+                            </button>
+                            <button class="cancel-btn" @onclick="CancelForm">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Table -->
+            <div class="table-card">
+                @if (members == null)
+                {
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                }
+                else if (!members.Any())
+                {
+                    <div class="empty-state">
+                        <i class="ri-user-line"></i>
+                        <p>No members found.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>NAME</th>
+                                    <th>EMAIL</th>
+                                    <th>PHONE</th>
+                                    <th>JOINED</th>
+                                    <th>STATUS</th>
+                                    <th>ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var member in members)
+                                {
+                                    <tr>
+                                        <td class="td-id">@member.Id</td>
+                                        <td class="td-title">@member.Name</td>
+                                        <td class="td-author">@member.Email</td>
+                                        <td class="td-author">@member.Phone</td>
+                                        <td class="td-author">@member.MembershipDate.ToString("yyyy-MM-dd")</td>
+                                        <td>
+                                            <span class="badge badge-available">Active</span>
+                                        </td>
+                                        <td>
+                                            <div class="action-btns">
+                                                <button class="edit-btn"
+                                                        @onclick="() => EditMember(member)">
+                                                    Edit
+                                                </button>
+                                                <button class="history-btn"
+                                                        @onclick="() => ViewHistory(member)">
+                                                    History
+                                                </button>
+                                                <button class="delete-btn @(deleteConfirmId == member.Id ? "confirm" : "")"
+                                                        @onclick="() => DeleteMember(member.Id)">
+                                                    @(deleteConfirmId == member.Id ? "Confirm?" : "Delete")
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    @if (showHistory)
+    {
+        <div class="modal-overlay" @onclick="CloseHistory">
+            <div class="modal-box" @onclick:stopPropagation="true">
+                <div class="modal-header">
+                    <h3>Borrow History — @selectedMemberName</h3>
+                    <button class="modal-close" @onclick="CloseHistory">×</button>
+                </div>
+                <div class="modal-body">
+                    @if (borrowHistory == null)
+                    {
+                        <div class="loading"><div class="spinner"></div></div>
+                    }
+                    else if (!borrowHistory.Any())
+                    {
+                        <p class="no-history">No borrow history found.</p>
+                    }
+                    else
+                    {
+                        @foreach (var record in borrowHistory)
+                        {
+                            <div class="history-item">
+                                <div class="history-item-top">
+                                    <span class="history-book">Book ID: @record.BookId</span>
+                                    @if (record.IsReturned)
+                                    {
+                                        <span class="badge badge-available">Returned</span>
+                                    }
+                                    else if (record.DueDate < DateTime.Now)
+                                    {
+                                        <span class="badge badge-overdue">Overdue</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-active">Active</span>
+                                    }
+                                </div>
+                                <div class="history-item-dates">
+                                    <span>Borrowed: @record.BorrowDate.ToString("yyyy-MM-dd")</span>
+                                    <span>Due: @record.DueDate.ToString("yyyy-MM-dd")</span>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="footer-top">
+            <div class="footer-left">
+                <h2>Expand Your<br />Knowledge</h2>
+                <p>SmartLibrary empowers communities to discover, borrow, and manage books effortlessly.</p>
+            </div>
+            <div class="footer-right">
+                <div class="footer-column">
+                    <h3>RESOURCES</h3>
+                    <a href="/books">Books Catalog</a>
+                    <a href="/authors">Authors Index</a>
+                    <a href="/categories">Categories</a>
+                </div>
+                <div class="footer-column">
+                    <h3>MANAGEMENT</h3>
+                    <a href="/members">Members</a>
+                    <a href="/borrowrecords">Borrow Records</a>
+                    <a href="#">Dashboard</a>
+                </div>
+                <div class="footer-column">
+                    <h3>SUPPORT</h3>
+                    <a href="#">Help Center</a>
+                    <a href="#">Documentation</a>
+                    <a href="#">Contact Us</a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2026 SmartLibrary. All rights reserved.</p>
+            <div class="footer-links">
+                <span>Privacy Policy</span>
+                <span>Terms of Service</span>
+            </div>
+        </div>
+    </footer>
+
+</div>
+
+@code {
+    private List<Member>? members;
+    private Member editingMember = new Member();
+    private bool showForm = false;
+    private bool showHistory = false;
+    private string alertMessage = "";
+    private string alertClass = "";
+    private string selectedMemberName = "";
+    private List<BorrowRecord>? borrowHistory;
+    private int? deleteConfirmId = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMembers();
+    }
+
+    private async Task LoadMembers()
+    {
+        try
+        {
+            members = await Http.GetFromJsonAsync<List<Member>>("api/members");
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"Error loading members: {ex.Message}", "alert-error");
+        }
+    }
+
+    private async Task ViewHistory(Member member)
+    {
+        try
+        {
+            selectedMemberName = member.Name;
+            borrowHistory = await Http.GetFromJsonAsync<List<BorrowRecord>>(
+                $"api/members/{member.Id}/borrowhistory");
+            showHistory = true;
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"Error loading history: {ex.Message}", "alert-error");
+        }
+    }
+
+    private void CloseHistory()
+    {
+        showHistory = false;
+        borrowHistory = null;
+    }
+
+    private void ShowAddForm()
+    {
+        editingMember = new Member();
+        showForm = true;
+        alertMessage = "";
+    }
+
+    private void EditMember(Member member)
+    {
+        editingMember = new Member
+        {
+            Id = member.Id,
+            Name = member.Name,
+            Email = member.Email,
+            Phone = member.Phone,
+            MembershipDate = member.MembershipDate
+        };
+        showForm = true;
+        alertMessage = "";
+    }
+
+    private async Task SaveMember()
+    {
+        try
+        {
+            if (editingMember.Id == 0)
+                await Http.PostAsJsonAsync("api/members", editingMember);
+            else
+                await Http.PutAsJsonAsync(
+                    $"api/members/{editingMember.Id}", editingMember);
+
+            showForm = false;
+            ShowAlert(editingMember.Id == 0 ?
+                "Member added successfully." : "Member updated successfully.", "alert-success");
+            await LoadMembers();
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"Error saving: {ex.Message}", "alert-error");
+        }
+    }
+
+    private async Task DeleteMember(int id)
+    {
+        if (deleteConfirmId == id)
+        {
+            try
+            {
+                await Http.DeleteAsync($"api/members/{id}");
+                deleteConfirmId = null;
+                ShowAlert("Member deleted successfully.", "alert-success");
+                await LoadMembers();
+            }
+            catch (Exception ex)
+            {
+                ShowAlert($"Error deleting: {ex.Message}", "alert-error");
+            }
+        }
+        else
+        {
+            deleteConfirmId = id;
+        }
+    }
+
+    private void CancelForm()
+    {
+        showForm = false;
+        alertMessage = "";
+    }
+
+    private void ShowAlert(string message, string cssClass)
+    {
+        alertMessage = message;
+        alertClass = cssClass;
+    }
+
+    public class Member
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+        public DateTime MembershipDate { get; set; }
+    }
+
+    public class BorrowRecord
+    {
+        public int Id { get; set; }
+        public int BookId { get; set; }
+        public int MemberId { get; set; }
+        public DateTime BorrowDate { get; set; }
+        public DateTime DueDate { get; set; }
+        public DateTime? ReturnDate { get; set; }
+        public bool IsReturned { get; set; }
+    }
+}

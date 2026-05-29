@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="SmartLibrary.API/SmartLibrary.API.csproj" />
+  <Project Path="SmartLibrary.UI/SmartLibrary.UI.csproj" Id="12813dbd-222a-46be-82f6-2d3e9f3939db" />
 </Solution>

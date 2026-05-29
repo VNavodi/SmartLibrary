@@ -1,0 +1,284 @@
+﻿@page "/authors"
+@inject HttpClient Http
+
+<PageTitle>Authors - SmartLibrary</PageTitle>
+
+<div class="smartlibrary-app">
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a class="brand" href="/">SmartLibrary</a>
+            <div class="nav-links">
+                <a class="nav-link" href="/">Home</a>
+                <a class="nav-link" href="/books">Books</a>
+                <a class="nav-link active" href="/authors">Authors</a>
+                <a class="nav-link" href="/categories">Categories</a>
+                <a class="nav-link" href="/members">Members</a>
+                <a class="nav-link" href="/borrowrecords">Borrow Records</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- PAGE CONTENT -->
+    <div class="page-content">
+        <div class="content-wrapper">
+
+            <!-- Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Authors</h1>
+                    <p class="page-subtitle">Manage authors in your catalog</p>
+                </div>
+                <button class="add-btn" @onclick="ShowAddForm">
+                    + Add New Author
+                </button>
+            </div>
+
+            <!-- Alert -->
+            @if (!string.IsNullOrEmpty(alertMessage))
+            {
+                <div class="alert @alertClass">
+                    @alertMessage
+                    <button class="alert-close" @onclick="() => alertMessage = string.Empty">×</button>
+                </div>
+            }
+
+            <!-- Add/Edit Form -->
+            @if (showForm)
+            {
+                <div class="form-card">
+                    <div class="form-header">
+                        <h3>@(editingAuthor.Id == 0 ? "Add New Author" : "Edit Author")</h3>
+                        <button class="form-close" @onclick="CancelForm">×</button>
+                    </div>
+                    <div class="form-body">
+                        <div class="form-grid authors-form-grid">
+                            <div class="form-group">
+                                <label>Name *</label>
+                                <input class="form-input" @bind="editingAuthor.Name" />
+                            </div>
+                            <div class="form-group">
+                                <label>Nationality</label>
+                                <input class="form-input" @bind="editingAuthor.Nationality" />
+                            </div>
+                            <div class="form-group form-group-full">
+                                <label>Biography</label>
+                                <textarea class="form-input form-textarea"
+                                          rows="3"
+                                          @bind="editingAuthor.Biography"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="save-btn" @onclick="SaveAuthor">
+                                @(editingAuthor.Id == 0 ? "Save Author" : "Update Author")
+                            </button>
+                            <button class="cancel-btn" @onclick="CancelForm">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Table -->
+            <div class="table-card">
+                @if (authors == null)
+                {
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                }
+                else if (!authors.Any())
+                {
+                    <div class="empty-state">
+                        <i class="ri-user-line"></i>
+                        <p>No authors found.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>NAME</th>
+                                    <th>NATIONALITY</th>
+                                    <th>BIOGRAPHY</th>
+                                    <th>ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var author in authors)
+                                {
+                                    <tr>
+                                        <td class="td-id">@author.Id</td>
+                                        <td class="td-title">@author.Name</td>
+                                        <td class="td-author">@author.Nationality</td>
+                                        <td class="td-author td-truncate">@author.Biography</td>
+                                        <td>
+                                            <div class="action-btns">
+                                                <button class="edit-btn" @onclick="() => EditAuthor(author)">Edit</button>
+                                                <button class="delete-btn @(deleteConfirmId == author.Id ? "confirm" : "")"
+                                                        @onclick="() => DeleteAuthor(author.Id)">
+                                                    @(deleteConfirmId == author.Id ? "Confirm?" : "Delete")
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="footer-top">
+            <div class="footer-left">
+                <h2>Expand Your<br />Knowledge</h2>
+                <p>SmartLibrary empowers communities to discover, borrow, and manage books effortlessly.</p>
+            </div>
+            <div class="footer-right">
+                <div class="footer-column">
+                    <h3>RESOURCES</h3>
+                    <a href="/books">Books Catalog</a>
+                    <a href="/authors">Authors Index</a>
+                    <a href="/categories">Categories</a>
+                </div>
+                <div class="footer-column">
+                    <h3>MANAGEMENT</h3>
+                    <a href="/members">Members</a>
+                    <a href="/borrowrecords">Borrow Records</a>
+                    <a href="#">Dashboard</a>
+                </div>
+                <div class="footer-column">
+                    <h3>SUPPORT</h3>
+                    <a href="#">Help Center</a>
+                    <a href="#">Documentation</a>
+                    <a href="#">Contact Us</a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2026 SmartLibrary. All rights reserved.</p>
+            <div class="footer-links">
+                <span>Privacy Policy</span>
+                <span>Terms of Service</span>
+            </div>
+        </div>
+    </footer>
+
+</div>
+
+@code {
+    private List<Author>? authors;
+    private Author editingAuthor = new Author();
+    private bool showForm = false;
+    private string alertMessage = "";
+    private string alertClass = "";
+    private int? deleteConfirmId = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAuthors();
+    }
+
+    private async Task LoadAuthors()
+    {
+        try
+        {
+            authors = await Http.GetFromJsonAsync<List<Author>>("api/authors");
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"Error loading authors: {ex.Message}", "alert-error");
+        }
+    }
+
+    private void ShowAddForm()
+    {
+        editingAuthor = new Author();
+        showForm = true;
+        alertMessage = "";
+    }
+
+    private void EditAuthor(Author author)
+    {
+        editingAuthor = new Author
+        {
+            Id = author.Id,
+            Name = author.Name,
+            Biography = author.Biography,
+            Nationality = author.Nationality
+        };
+        showForm = true;
+        alertMessage = "";
+    }
+
+    private async Task SaveAuthor()
+    {
+        try
+        {
+            if (editingAuthor.Id == 0)
+                await Http.PostAsJsonAsync("api/authors", editingAuthor);
+            else
+                await Http.PutAsJsonAsync(
+                    $"api/authors/{editingAuthor.Id}", editingAuthor);
+
+            showForm = false;
+            ShowAlert(editingAuthor.Id == 0 ?
+                "Author added successfully." : "Author updated successfully.", "alert-success");
+            await LoadAuthors();
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"Error saving: {ex.Message}", "alert-error");
+        }
+    }
+
+    private async Task DeleteAuthor(int id)
+    {
+        if (deleteConfirmId == id)
+        {
+            try
+            {
+                await Http.DeleteAsync($"api/authors/{id}");
+                deleteConfirmId = null;
+                ShowAlert("Author deleted successfully.", "alert-success");
+                await LoadAuthors();
+            }
+            catch (Exception ex)
+            {
+                ShowAlert($"Error deleting: {ex.Message}", "alert-error");
+            }
+        }
+        else
+        {
+            deleteConfirmId = id;
+        }
+    }
+
+    private void CancelForm()
+    {
+        showForm = false;
+        alertMessage = "";
+    }
+
+    private void ShowAlert(string message, string cssClass)
+    {
+        alertMessage = message;
+        alertClass = cssClass;
+    }
+
+    public class Author
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Biography { get; set; } = string.Empty;
+        public string Nationality { get; set; } = string.Empty;
+    }
+}

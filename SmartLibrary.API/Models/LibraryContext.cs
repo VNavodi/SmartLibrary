@@ -46,9 +46,9 @@ namespace SmartLibrary.API.Models
             );
 
             modelBuilder.Entity<Category>().HasData(
-                new Category { Id = 1, Name = "Fiction" },
-                new Category { Id = 2, Name = "Non-Fiction" },
-                new Category { Id = 3, Name = "Science" }
+                new Category { Id = 1, Name = "Fiction", Description = "Fictional stories and novels" },
+                new Category { Id = 2, Name = "Non-Fiction", Description = "Real world facts and events" },
+                new Category { Id = 3, Name = "Science", Description = "Scientific topics and discoveries" }
             );
 
             modelBuilder.Entity<Book>().HasData(
