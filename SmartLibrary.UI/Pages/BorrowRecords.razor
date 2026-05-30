@@ -167,13 +167,13 @@
                                         <td class="td-id">@record.Id</td>
                                         <td>
                                             <div>
-                                                <p class="td-title" style="font-size:12px;">Member @record.MemberId</p>
+                                                <p class="td-title" style="font-size:12px;">@(record.Member?.Name ?? $"Member {record.MemberId}")</p>
                                                 <p class="td-sub">ID: @record.MemberId</p>
                                             </div>
                                         </td>
                                         <td>
                                             <div>
-                                                <p class="td-title" style="font-size:12px;">Book @record.BookId</p>
+                                                <p class="td-title" style="font-size:12px;">@(record.Book?.Title ?? $"Book {record.BookId}")</p>
                                                 <p class="td-sub">ID: @record.BookId</p>
                                             </div>
                                         </td>
@@ -405,11 +405,25 @@
         alertClass = cssClass;
     }
 
+    public class MemberDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
+    public class BookDto
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+    }
+
     public class BorrowRecord
     {
         public int Id { get; set; }
         public int MemberId { get; set; }
+        public MemberDto? Member { get; set; }
         public int BookId { get; set; }
+        public BookDto? Book { get; set; }
         public DateTime BorrowDate { get; set; }
         public DateTime DueDate { get; set; }
         public DateTime? ReturnDate { get; set; }

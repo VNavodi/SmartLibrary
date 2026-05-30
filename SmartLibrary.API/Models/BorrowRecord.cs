@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 namespace SmartLibrary.API.Models
 {
@@ -7,11 +7,9 @@ namespace SmartLibrary.API.Models
         public int Id { get; set; }
         [Required]
         public int MemberId { get; set; }
-        [JsonIgnore]
         public virtual Member? Member { get; set; }
         [Required]
         public int BookId { get; set; }
-        [JsonIgnore]
         public virtual Book? Book { get; set; }
         public DateTime BorrowDate { get; set; }
         public DateTime DueDate { get; set; }

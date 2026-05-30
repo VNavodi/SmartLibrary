@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SmartLibrary.API.Models;
 
@@ -19,7 +19,10 @@ namespace SmartLibrary.API.Controllers
         [HttpGet]
         public async Task<ActionResult> GetAllBorrowRecords()
         {
-            var records = await _context.BorrowRecords.ToArrayAsync();
+            var records = await _context.BorrowRecords
+                .Include(br => br.Member)
+                .Include(br => br.Book)
+                .ToArrayAsync();
             return Ok(records);
         }
 
@@ -27,7 +30,10 @@ namespace SmartLibrary.API.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult> GetBorrowRecord(int id)
         {
-            var record = await _context.BorrowRecords.FindAsync(id);
+            var record = await _context.BorrowRecords
+                .Include(br => br.Member)
+                .Include(br => br.Book)
+                .FirstOrDefaultAsync(br => br.Id == id);
             if (record == null)
                 return NotFound();
             return Ok(record);
@@ -38,6 +44,8 @@ namespace SmartLibrary.API.Controllers
         public async Task<ActionResult> GetOverdueRecords()
         {
             var overdueRecords = await _context.BorrowRecords
+                .Include(br => br.Member)
+                .Include(br => br.Book)
                 .Where(br => br.IsReturned == false &&
                              br.DueDate < DateTime.Now)
                 .ToArrayAsync();

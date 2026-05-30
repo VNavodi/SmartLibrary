@@ -55,7 +55,7 @@
                            @bind:event="oninput"
                            @onkeyup="SearchBooks" />
                 </div>
-                <select class="filter-select" @onchange="FilterByAvailability">
+                <select class="filter-select" value="@selectedAvailability" @onchange="FilterByAvailability">
                     <option value="">All Availability</option>
                     <option value="true">Available</option>
                     <option value="false">Not Available</option>
@@ -159,7 +159,7 @@
                                         <td class="td-id">@book.Id</td>
                                         <td class="td-isbn">@book.ISBN</td>
                                         <td class="td-title">@book.Title</td>
-                                        <td class="td-author">Author @book.AuthorId</td>
+                                        <td class="td-author">@GetAuthorName(book.AuthorId)</td>
                                         <td class="td-price">$@book.Price.ToString("0.00")</td>
                                         <td class="td-copies">@book.AvailableCopies</td>
                                         <td>
@@ -231,24 +231,86 @@
 </div>
 
 @code {
+    // private List<Book>? books;
+
+    private List<Book>? allBooks;
     private List<Book>? books;
+    private List<Author>? authors;
+    private List<Category>? categories;
+
     private Book editingBook = new Book();
     private bool showForm = false;
     private string searchTitle = "";
+    private string selectedAvailability = "";
     private string alertMessage = "";
     private string alertClass = "";
     private int? deleteConfirmId = null;
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadAuthorsAndCategories();
         await LoadBooks();
+    }
+
+    private async Task LoadAuthorsAndCategories()
+    {
+        try
+        {
+            authors = await Http.GetFromJsonAsync<List<Author>>("api/authors");
+            categories = await Http.GetFromJsonAsync<List<Category>>("api/categories");
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"Error loading authors/categories: {ex.Message}", "alert-error");
+        }
+    }
+
+    private string GetAuthorName(int authorId)
+    {
+        return authors?.FirstOrDefault(a => a.Id == authorId)?.Name
+               ?? $"Author {authorId}";
+    }
+
+    private void ApplyFilters()
+    {
+        if (allBooks == null)
+            return;
+
+        var query = allBooks.AsQueryable();
+
+        // Search Filter
+        if (!string.IsNullOrWhiteSpace(searchTitle))
+        {
+            var cleanSearch = searchTitle.Trim().ToLowerInvariant();
+
+            query = query.Where(b =>
+                b.Title.ToLowerInvariant().Contains(cleanSearch) ||
+                b.ISBN.ToLowerInvariant().Contains(cleanSearch) ||
+                GetAuthorName(b.AuthorId).ToLowerInvariant().Contains(cleanSearch)
+            );
+        }
+
+        // Availability Filter
+        if (selectedAvailability == "true")
+        {
+            query = query.Where(b => b.IsAvailable);
+        }
+        else if (selectedAvailability == "false")
+        {
+            query = query.Where(b => !b.IsAvailable);
+        }
+
+        books = query.ToList();
     }
 
     private async Task LoadBooks()
     {
         try
         {
-            books = await Http.GetFromJsonAsync<List<Book>>("api/books");
+            // books = await Http.GetFromJsonAsync<List<Book>>("api/books");
+
+            allBooks = await Http.GetFromJsonAsync<List<Book>>("api/books");
+            ApplyFilters();
         }
         catch (Exception ex)
         {
@@ -256,35 +318,48 @@
         }
     }
 
-    private async Task SearchBooks()
+    // private async Task SearchBooks()
+    // {
+    //     try
+    //     {
+    //         if (string.IsNullOrEmpty(searchTitle))
+    //             await LoadBooks();
+    //         else
+    //             books = await Http.GetFromJsonAsync<List<Book>>(
+    //                 $"api/books/search?title={searchTitle}");
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         ShowAlert($"Error: {ex.Message}", "alert-error");
+    //     }
+    // }
+
+    private Task SearchBooks()
     {
-        try
-        {
-            if (string.IsNullOrEmpty(searchTitle))
-                await LoadBooks();
-            else
-                books = await Http.GetFromJsonAsync<List<Book>>(
-                    $"api/books/search?title={searchTitle}");
-        }
-        catch (Exception ex)
-        {
-            ShowAlert($"Error: {ex.Message}", "alert-error");
-        }
+        ApplyFilters();
+        return Task.CompletedTask;
     }
 
-    private async Task FilterByAvailability(ChangeEventArgs e)
+    // private async Task FilterByAvailability(ChangeEventArgs e)
+    // {
+    //     try
+    //     {
+    //         if (e.Value?.ToString() == "true")
+    //             books = await Http.GetFromJsonAsync<List<Book>>("api/books/available");
+    //         else
+    //             await LoadBooks();
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         ShowAlert($"Error: {ex.Message}", "alert-error");
+    //     }
+    // }
+
+    private Task FilterByAvailability(ChangeEventArgs e)
     {
-        try
-        {
-            if (e.Value?.ToString() == "true")
-                books = await Http.GetFromJsonAsync<List<Book>>("api/books/available");
-            else
-                await LoadBooks();
-        }
-        catch (Exception ex)
-        {
-            ShowAlert($"Error: {ex.Message}", "alert-error");
-        }
+        selectedAvailability = e.Value?.ToString() ?? "";
+        ApplyFilters();
+        return Task.CompletedTask;
     }
 
     private void ShowAddForm()
@@ -327,6 +402,7 @@
             showForm = false;
             ShowAlert(editingBook.Id == 0 ? "Book added successfully." : "Book updated successfully.", "alert-success");
             await LoadBooks();
+            ApplyFilters();
         }
         catch (Exception ex)
         {
@@ -345,6 +421,7 @@
                 deleteConfirmId = null;
                 ShowAlert("Book deleted successfully.", "alert-success");
                 await LoadBooks();
+                ApplyFilters();
             }
             catch (Exception ex)
             {
@@ -381,5 +458,17 @@
         public bool IsAvailable { get; set; }
         public int AuthorId { get; set; }
         public int CategoryId { get; set; }
+    }
+
+    public class Author
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
+    public class Category
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
     }
 }

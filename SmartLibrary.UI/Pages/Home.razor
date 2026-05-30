@@ -1,4 +1,32 @@
-﻿@page "/"
+﻿@inject HttpClient Http
+@page "/"
+
+@code {
+    private AnalyticsDto? analytics;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            analytics = await Http.GetFromJsonAsync<AnalyticsDto>("api/analytics");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    public class AnalyticsDto
+    {
+        public int TotalBooks { get; set; }
+        public int AvailableBooks { get; set; }
+        public int MembersCount { get; set; }
+        public int ActiveBorrows { get; set; }
+    }
+}
+
+
 
 <PageTitle>SmartLibrary</PageTitle>
 
@@ -60,7 +88,8 @@
                         <span>Total Books</span>
                     </div>
 
-                    <h2>69</h2>
+                    @* <h2>69</h2> *@
+                    <h2>@(analytics != null ? analytics.TotalBooks.ToString() : "...")</h2>
                     <p>Copies in collection</p>
                 </div>
 
@@ -73,7 +102,8 @@
                         <span>Available</span>
                     </div>
 
-                    <h2>32</h2>
+                    @* <h2>32</h2> *@
+                    <h2>@(analytics != null ? analytics.AvailableBooks.ToString() : "...")</h2>
                     <p>Ready to borrow</p>
                 </div>
 
@@ -86,7 +116,9 @@
                         <span>Members</span>
                     </div>
 
-                    <h2>8</h2>
+                    @* <h2>8</h2> *@
+                    <h2>@(analytics != null ? analytics.MembersCount.ToString() : "...")</h2>
+
                     <p>Registered readers</p>
                 </div>
 
@@ -99,7 +131,9 @@
                         <span>Active Borrows</span>
                     </div>
 
-                    <h2>4</h2>
+                    @* <h2>4</h2> *@
+                    <h2>@(analytics != null ? analytics.ActiveBorrows.ToString() : "...")</h2>
+
                     <p>Currently on loan</p>
                 </div>
 
