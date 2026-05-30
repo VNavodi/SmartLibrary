@@ -146,6 +146,7 @@
                                     <th>ISBN</th>
                                     <th>TITLE</th>
                                     <th>AUTHOR</th>
+                                    <th>CATEGORY</th>
                                     <th>PRICE</th>
                                     <th>COPIES</th>
                                     <th>AVAILABLE</th>
@@ -160,6 +161,7 @@
                                         <td class="td-isbn">@book.ISBN</td>
                                         <td class="td-title">@book.Title</td>
                                         <td class="td-author">@GetAuthorName(book.AuthorId)</td>
+                                        <td class="td-category">@GetCategoryName(book.CategoryId)</td>
                                         <td class="td-price">$@book.Price.ToString("0.00")</td>
                                         <td class="td-copies">@book.AvailableCopies</td>
                                         <td>
@@ -269,6 +271,12 @@
     {
         return authors?.FirstOrDefault(a => a.Id == authorId)?.Name
                ?? $"Author {authorId}";
+    }
+
+    private string GetCategoryName(int categoryId)
+    {
+        return categories?.FirstOrDefault(c => c.Id == categoryId)?.Name
+               ?? $"Category {categoryId}";
     }
 
     private void ApplyFilters()
